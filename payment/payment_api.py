@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 import payment
-from paymentdb import Account, session
+from paymentdb import EthereumAccount, NanoAccount, session
 
 app = Flask(__name__)
 
@@ -17,7 +17,7 @@ def create_user():
 def get_address():
     username = request.args['username']
     address = payment.get_address(username)
-    return jsonify({username: address})
+    return jsonify(address)
 
 @app.route("/withdraw")
 def withdraw():

@@ -26,6 +26,7 @@ class NanoAccount(Base):
     balance  = Column(Integer)
     username = Column(String(40))
     last_block = Column(String(70))
+    account_id = Column(String(130))
 
 def create_tables():
     Base.metadata.create_all(bind=engine)
