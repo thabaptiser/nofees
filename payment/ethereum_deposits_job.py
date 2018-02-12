@@ -3,6 +3,7 @@ import codecs
 import sqlalchemy
 import web3
 from paymentdb import session, create_tables, Session, EthereumAccount
+from sqlalchemy.sql import func
 from ethereum import utils
 import rlp
 from ethereum.transactions import Transaction
@@ -116,9 +117,8 @@ def log(username, value):
 
 
 def get_last_block():
-    with open("lastblock") as f:
-        last_block = int(f.read())
-        return last_block
+    last_block = session.query(func.max(EthereumAccount.last_block)).scalar()
+    print(last_block)
 
 def ethereum_deposits():
     #session = Session()
