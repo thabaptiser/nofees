@@ -30,7 +30,7 @@ def get_addresses(addresses):
         addresses = {}
         account_list = session.query(EthereumAccount).all()
         for account in account_list:
-            addresses[account.public_key] = (account.username, last_block)
+            addresses[account.public_key] = account
     return addresses
 
 def update_address(public_key, last_block):
@@ -122,7 +122,7 @@ def get_last_block():
 
 def ethereum_deposits():
     #session = Session()
-    last_block = get_last_block()
+    last_block = get_last_block() or 1761900
     addresses = get_addresses({})
     print('starting')
     while True:
@@ -133,12 +133,12 @@ def ethereum_deposits():
             block = web3.eth.getBlock(block_num, full_transactions=True)
             addresses = get_addresses(addresses)
             for t in block['transactions']:
-                if addresses[t['to']].last_block == block_num: #skip updating address if we've already looked at it in this block
-                    continue
                 if t['to'] in addresses:
+                    if addresses[t['to']].last_block == block_num: #skip updating address if we've already looked at it in this block
+                        continue
                     update_address(t['to'], block_num)
                     value = int(web3.fromWei(t['value'], 'szabo'))
-                    username = addresses[t['to']]
+                    username = addresses[t['to']].username
                     add_balance(username, value)
                     log(username, value)
                     if username != 'hotwallet':
