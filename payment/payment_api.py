@@ -22,7 +22,7 @@ def get_address():
 @app.route("/withdraw")
 def withdraw():
     username = request.args['username']
-    balance = int(request.args['balance'])
+    balance = request.args['balance']
     currency = request.args['currency']
     address = request.args['address']
     response = payment.withdraw(username, balance, address, currency)
