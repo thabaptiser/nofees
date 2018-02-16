@@ -124,4 +124,4 @@ def withdraw_nano(username, amount, address):
 def withdraw(username, amount, address, currency):
     withdraw_functions = {'ETH': withdraw_eth, 'NANO': withdraw_nano}
     ret_dict = withdraw_functions[currency](username, amount, address)
-    return jsonify(ret_dict)
+    return ret_dict
