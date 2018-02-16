@@ -2,7 +2,7 @@ import boto3
 import codecs
 import sqlalchemy
 from raiblocks import RPCClient, convert
-from values import nano_wallet
+import values
 from paymentdb import session, create_tables, Session, NanoAccount
 from threading import Thread
 
@@ -14,7 +14,7 @@ print('connecting to RDS')
 table = dynamodb.Table('UserBalances')
 create_tables()
 print('connecting to Nano Node')
-rpc = RPCClient('http://54.238.79.10:7076')
+rpc = RPCClient(values.nano_node)
 
 def get_accounts(wallet): #load accounts from SQL and add those to the Node wallet
     accounts = session.query(NanoAccount).all()

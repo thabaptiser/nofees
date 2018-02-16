@@ -20,8 +20,8 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('UserBalances')
 
 create_tables()
-web3 = web3.Web3(web3.HTTPProvider('http://54.238.99.37:8545'))
-rpc = RPCClient('http://54.238.79.10:7076')
+web3 = web3.Web3(web3.HTTPProvider(values.eth_node))
+rpc = RPCClient(values.nano_node)
 
 def create_address_ethereum(username):
     private_key = utils.sha3(os.urandom(4096))

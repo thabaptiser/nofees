@@ -18,7 +18,7 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('UserBalances')
 
 create_tables()
-web3 = web3.Web3(web3.HTTPProvider('http://54.238.99.37:8545'))
+web3 = web3.Web3(web3.HTTPProvider(value.eth_node))
 
 
 # Adresses dict format {ADDRESS: USERNAME, LAST_BLOCK}
