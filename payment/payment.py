@@ -4,8 +4,8 @@ import sqlalchemy
 import web3
 from paymentdb import session, create_tables, NanoAccount, EthereumAccount
 from ethereum import utils
-from raiblocks import RPCClient
-from flask import Flask
+from raiblocks import RPCClient, convert
+from flask import Flask, jsonify
 import rlp
 from ethereum.transactions import Transaction
 from threading import Thread
@@ -104,14 +104,15 @@ def withdraw_eth(username, amount, address):
 
 
 def withdraw_nano(username, amount, address):
+    amount = float(amount)
     if amount <= 0:
         return {'success': False, 'error': 'You can not withdraw 0 or a negative amount'}
     hotwallet_account = session.query(NanoAccount).filter(NanoAccount.username == 'hotwallet').one()
     user_balance = table.get_item(Key={'UserIDandSymbol': '{username}.NANO'.format(username=username)})['Item']
     if convert(user_balance['Balance'], from_unit=values.nano_base_unit, to_unit='XRB') >= amount:
         rpc.send(
-                wallet = values.nano_wallet
-                source = hotwallet_account.account_id
+                wallet = values.nano_wallet,
+                source = hotwallet_account.account_id,
                 destination = address,
                 amount = amount
                 )
@@ -121,6 +122,6 @@ def withdraw_nano(username, amount, address):
     return
 
 def withdraw(username, amount, address, currency):
-    withdraw_functions = {'ETH': withdraw_eth, 'NANO', withdraw_nano}
+    withdraw_functions = {'ETH': withdraw_eth, 'NANO': withdraw_nano}
     ret_dict = withdraw_functions[currency](username, amount, address)
     return jsonify(ret_dict)
