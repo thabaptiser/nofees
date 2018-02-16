@@ -23,15 +23,15 @@ def get_address():
 def withdraw():
     username = request.args['username']
     balance = int(request.args['balance'])
+    currency = request.args['currency']
     address = request.args['address']
-    response = payment.withdraw(username, balance, address)
+    response = payment.withdraw(username, balance, address, currency)
     if response:
         return jsonify(response)
     return jsonify({'success':'withdrawal sent'})
 
 @app.route("/reset_data")
 def reset_data():
-
     print('1GOT RESET REQUEST')
     session.query(Account).delete()
     print('2GOT RESET REQUEST')

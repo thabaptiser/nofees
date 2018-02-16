@@ -2,6 +2,7 @@ import boto3
 import codecs
 import sqlalchemy
 from raiblocks import RPCClient, convert
+from values import nano_wallet
 from paymentdb import session, create_tables, Session, NanoAccount
 from threading import Thread
 
@@ -146,7 +147,7 @@ def receive_all(wallet, accounts):
 def nano_deposits():
     #session = Session()
     print('starting deposits job')
-    wallet = rpc.wallet_create()
+    wallet = values.nano_wallet
     while True:
         accounts = get_accounts(wallet)
         #print(rpc.wallet_republish(wallet, 1000))

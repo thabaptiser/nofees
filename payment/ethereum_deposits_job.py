@@ -8,6 +8,7 @@ from ethereum import utils
 import rlp
 from ethereum.transactions import Transaction
 from threading import Thread
+import values
 
 
 import os
@@ -35,7 +36,7 @@ def get_addresses(addresses):
 
 def update_address(public_key, last_block):
     account = session.query(EthereumAccount).filter(EthereumAccount.public_key == public_key).one()
-    account.balance = web3.fromWei(web3.eth.getBalance(account.public_key), 'szabo')
+    account.balance = web3.fromWei(web3.eth.getBalance(account.public_key), values.eth_base_unit)
     account.last_block = last_block
     session.commit()
 
@@ -49,7 +50,7 @@ def send_to_hot_wallet(public_key):
 	gasprice=gasprice,
 	startgas=startgas,
 	to=hotwallet.public_key,
-	value=web3.toWei(account.balance, 'szabo') - gasprice * startgas,
+	value=web3.toWei(account.balance, values.eth_base_unit) - gasprice * startgas,
         data=b'',
     )
     tx.sign(bytes(ord(x) for x in account.private_key))
@@ -66,19 +67,19 @@ def withdraw(username, amount, address):
     gasprice = web3.toWei(10, 'Gwei')
     startgas = 21000
     print('user balance', user_balance['Balance'])
-    print('amount', amount, 'withdraw fee', web3.fromWei(gasprice * startgas, 'szabo'))
+    print('amount', amount, 'withdraw fee', web3.fromWei(gasprice * startgas, values.eth_base_unit))
     if amount <= 0:
         return {'error': 'You can not withdraw 0 or a negative amount'}
     if amount > user_balance['Balance']:
         return {'error': 'You can not withdraw more than your available balance'}
-    if web3.toWei(amount, 'szabo') <= gasprice * startgas:
+    if web3.toWei(amount, values.eth_base_unit) <= gasprice * startgas:
         return {'error': 'You can not withdraw less than the withdrawal fee'}
     tx = Transaction(
 	nonce=web3.eth.getTransactionCount(hotwallet.public_key),
 	gasprice=gasprice,
 	startgas=startgas,
 	to=address,
-	value=web3.toWei(amount, 'szabo') - gasprice * startgas,
+	value=web3.toWei(amount, values.eth_base_unit) - gasprice * startgas,
         data=b'',
     )
     tx.sign(bytes(ord(x) for x in hotwallet.private_key))
@@ -137,7 +138,7 @@ def ethereum_deposits():
                     if addresses[t['to']].last_block == block_num: #skip updating address if we've already looked at it in this block
                         continue
                     update_address(t['to'], block_num)
-                    value = int(web3.fromWei(t['value'], 'szabo'))
+                    value = int(web3.fromWei(t['value'], values.eth_base_unit))
                     username = addresses[t['to']].username
                     add_balance(username, value)
                     log(username, value)

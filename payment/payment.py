@@ -10,6 +10,8 @@ import rlp
 from ethereum.transactions import Transaction
 from threading import Thread
 
+import values
+
 
 import os
 
@@ -50,19 +52,10 @@ def create_address_nano(username):
 
 
 def create_user_balance(username):
-    user_balance = table.get_item(
-        Key={
-        'UserIDandSymbol': '{username}.ETH'.format(username=username),
-            },
-        )
+    user_balance = table.get_item(Key={'UserIDandSymbol': '{username}.ETH'.format(username=username)})
     print(user_balance)
     if 'Item' not in user_balance:
-        table.put_item(
-            Item={
-                'UserIDandSymbol': '{username}.ETH'.format(username=username),
-                'Balance': 0
-                }
-        )
+        table.put_item(Item={'UserIDandSymbol': '{username}.ETH'.format(username=username), 'Balance': 0})
 
 def create_user(username):
     create_user_balance(username)
@@ -75,46 +68,59 @@ def get_address(username):
     nano_addr = session.query(NanoAccount).filter(NanoAccount.username == username).one()
     return {'ETH': eth_addr.public_key, 'NANO': nano_addr.account_id}
 
-def withdraw(username, amount, address):
-    user_balance = table.get_item(
-        Key={
-            'UserIDandSymbol': '{username}.ETH'.format(username=username),
-            },
-        )['Item']
+def withdraw_eth(username, amount, address):
+    user_balance = table.get_item(Key={'UserIDandSymbol': '{username}.ETH'.format(username=username)})['Item']
     account = session.query(Account).filter(Account.username == username).first()
     hotwallet = session.query(Account).filter(Account.username == 'hotwallet').first()
     gasprice = web3.toWei(10, 'Gwei')
     startgas = 21000
     print('user balance', user_balance['Balance'])
-    print('amount', amount, 'withdraw fee', web3.fromWei(gasprice * startgas, 'szabo'))
+    print('amount', amount, 'withdraw fee', web3.fromWei(gasprice * startgas, values.eth_base_unit))
+    if amount == 'all':
+        amount = user_balance['Balance']
     if amount <= 0:
-        return {'error': 'You can not withdraw 0 or a negative amount'}
+        return {'success': False, 'error': 'You can not withdraw 0 or a negative amount'}
     if amount > user_balance['Balance']:
-        return {'error': 'You can not withdraw more than your available balance'}
-    if web3.toWei(amount, 'szabo') <= gasprice * startgas:
-        return {'error': 'You can not withdraw less than the withdrawal fee'}
+        return {'success': False, 'error': 'You can not withdraw more than your available balance'}
+    if web3.toWei(amount, values.eth_base_unit) <= gasprice * startgas:
+        return {'success': False, 'error': 'You can not withdraw less than the withdrawal fee'}
     tx = Transaction(
 	nonce=web3.eth.getTransactionCount(hotwallet.public_key),
 	gasprice=gasprice,
 	startgas=startgas,
 	to=address,
-	value=web3.toWei(amount, 'szabo') - gasprice * startgas,
+	value=web3.toWei(amount, eth_base_unit) - gasprice * startgas,
         data=b'',
     )
     tx.sign(bytes(private_key))
     raw_tx = rlp.encode(tx)
     raw_tx_hex = web3.toHex(raw_tx)
-    web3.eth.sendRawTransaction(raw_tx_hex)
-    table.update_item(
-    Key={
-        'UserIDandSymbol': '{username}.ETH'.format(username=username),
-        },
+    tx_id = web3.eth.sendRawTransaction(raw_tx_hex)
+    table.update_item(Key={'UserIDandSymbol': '{username}.ETH'.format(username=username)},
         UpdateExpression='SET Balance = Balance - :val1',
-        ExpressionAttributeValues={
-            ':val1': amount
-        }
-    )
-
+        ExpressionAttributeValues={':val1': amount})
+    return {'success': True, 'error': None, 'tx_id': tx_id}
     print('Withdrew {amount} from {user} to address {address}'.format(amount=amount, user=username, address=address))
 
 
+def withdraw_nano(username, amount, address):
+    if amount <= 0:
+        return {'success': False, 'error': 'You can not withdraw 0 or a negative amount'}
+    hotwallet_account = session.query(NanoAccount).filter(NanoAccount.username == 'hotwallet').one()
+    user_balance = table.get_item(Key={'UserIDandSymbol': '{username}.NANO'.format(username=username)})['Item']
+    if convert(user_balance['Balance'], from_unit=values.nano_base_unit, to_unit='XRB') >= amount:
+        rpc.send(
+                wallet = values.nano_wallet
+                source = hotwallet_account.account_id
+                destination = address,
+                amount = amount
+                )
+    else:
+        return {'success': False, 'error': 'You can not withdraw more than your available balance'}
+
+    return
+
+def withdraw(username, amount, address, currency):
+    withdraw_functions = {'ETH': withdraw_eth, 'NANO', withdraw_nano}
+    ret_dict = withdraw_functions[currency](username, amount, address)
+    return jsonify(ret_dict)
