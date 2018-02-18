@@ -3,3 +3,4 @@ nano_node = 'http://13.230.107.202:7076'
 eth_node = 'http://54.238.99.37:8545'
 nano_base_unit = 'krai'
 eth_base_unit = 'szabo'
+currencies = ['NANO', 'ETH']

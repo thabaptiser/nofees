@@ -2,6 +2,7 @@ import boto3
 import codecs
 import sqlalchemy
 import web3
+import decimal as dc
 from paymentdb import session, create_tables, NanoAccount, EthereumAccount
 from ethereum import utils
 from raiblocks import RPCClient, convert
@@ -52,10 +53,12 @@ def create_address_nano(username):
 
 
 def create_user_balance(username):
-    user_balance = table.get_item(Key={'UserIDandSymbol': '{username}.ETH'.format(username=username)})
-    print(user_balance)
-    if 'Item' not in user_balance:
-        table.put_item(Item={'UserIDandSymbol': '{username}.ETH'.format(username=username), 'Balance': 0})
+    for c in values.currencies:
+        user_balance = table.get_item(Key={'UserIDandSymbol': '{username}.{c}'.format(username=username, c=c)})
+        print(user_balance)
+        if 'Item' not in user_balance:
+            table.put_item(Item={'UserIDandSymbol': '{username}.{c}'.format(username=username, c=c), 'Balance': 0})
+
 
 def create_user(username):
     create_user_balance(username)
@@ -104,22 +107,27 @@ def withdraw_eth(username, amount, address):
 
 
 def withdraw_nano(username, amount, address):
-    amount = float(amount)
+    amount = dc.Decimal(amount)
     if amount <= 0:
         return {'success': False, 'error': 'You can not withdraw 0 or a negative amount'}
     hotwallet_account = session.query(NanoAccount).filter(NanoAccount.username == 'hotwallet').one()
     user_balance = table.get_item(Key={'UserIDandSymbol': '{username}.NANO'.format(username=username)})['Item']
+    print(rpc.account_balance(hotwallet_account.account_id)['balance'])
     if convert(user_balance['Balance'], from_unit=values.nano_base_unit, to_unit='XRB') >= amount:
-        rpc.send(
+
+        table.update_item(Key={'UserIDandSymbol': '{username}.NANO'.format(username=username)},
+            UpdateExpression='SET Balance = Balance - :val1',
+            ExpressionAttributeValues={':val1': convert(amount, from_unit='XRB', to_unit=values.nano_base_unit)})
+
+        tx_id = rpc.send(
                 wallet = values.nano_wallet,
                 source = hotwallet_account.account_id,
                 destination = address,
-                amount = amount
+                amount = '{0:f}'.format(convert(amount, from_unit='XRB', to_unit='raw'))
                 )
+        return {'success': True, 'error': None, 'tx_id': tx_id}
     else:
         return {'success': False, 'error': 'You can not withdraw more than your available balance'}
-
-    return
 
 def withdraw(username, amount, address, currency):
     withdraw_functions = {'ETH': withdraw_eth, 'NANO': withdraw_nano}
